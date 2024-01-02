@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "products.h"
+#include <string.h>
 
 int open_file(FILE *f, char *name);
 int create_file(FILE *f, char *name);
@@ -8,15 +8,39 @@ void greetings();
 int read_choose();
 int process_choose(FILE *f, int choose);
 int process_create(FILE *f);
-int process_read(FILE *f);
+int process_read_all_registers(FILE *f);
 int process_update(FILE *f);
 int process_delete(FILE *f);
+
+typedef struct {
+  char name[50];
+  char description[150];
+  float price;
+  int quantity;
+} product;
+
+product create_product(char name[50], char description[150], float price, int quantity);
+
+product create_product(char name[50], char description[150], float price, int quantity) {
+  product p;
+  strcpy(p.name, name);
+  strcpy(p.description, description);
+  p.price = price;
+  p.quantity = quantity;
+  return p;
+}
+
+// saves product in file system
+int save_product(FILE*dest, product p) {
+  fwrite(&p, sizeof(product), 1, dest);
+  return 0;
+}
 
 int main() {
   FILE *f;
   int choose, result;
 
-  f = fopen("res.dat", "a");
+  f = fopen("res.txt", "a");
 
   if (f == NULL) {
     return -1;
@@ -40,7 +64,7 @@ int main() {
 }
 
 int  open_file(FILE *f, char* name) {
-  f = fopen(name, "ab");
+  f = fopen(name, "a");
   if (f == NULL) {
     return -1;
   }
@@ -70,7 +94,7 @@ int process_choose(FILE *f, int choose) {
     case 1:
       return process_create(f);
     case 2:
-      return process_read(f);
+      return process_read_all_registers(f);
     case 3:
       return process_update(f);
     case 4:
@@ -111,17 +135,54 @@ int process_create(FILE *f) {
 
   printf("Product created successfully\n");
 
-  return 0;  
-}
-
-int process_read(FILE *f) {
   return 0;
 }
+
+int process_read_all_registers(FILE *f) {
+  product p;
+
+  f = fopen("res.txt", "r");
+  
+  if(f == NULL) {
+    printf("an error occurred!");
+    return 0;
+  }
+
+  while(fread(&p, sizeof(product), 1, f)) {
+    printf ("Name = %50s\nDesc = %150s\nPrice = %0.2f\nQuant = %d\n",
+              p.name, 
+              p.description, 
+              p.price,
+              p.quantity);
+  }
+
+  fclose(f);
+}
+
 
 int process_update(FILE *f) {
   return 0;
 }
 
 int process_delete(FILE *f) {
-  return 0;
+  product p;
+  int found = 0;
+  char nameToDelete[50];
+  FILE *temp = fopen("temp.bin", "w");
+
+  printf("give the name of the product to delete > ");
+  scanf("%50s", nameToDelete);
+
+  while (fread(&p, sizeof(product), 1, f) == 1) {
+      if (strcmp(nameToDelete, p.name)) {
+          found = 1;
+          continue;
+      }
+      fwrite(&p, sizeof(product), 1, temp);
+  }
+  fclose(f);
+  fclose(temp);
+  remove("products.txt");
+  rename("temp.bin", "products.txt");
+  return found;
 }
