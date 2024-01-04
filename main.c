@@ -5,10 +5,11 @@
 int create_file(FILE *f, char *name);
 void greetings();
 int read_choose();
-int process_choose(FILE *f, int choose);
+int process_choose(int choose);
 int process_create(FILE *f);
 int process_read_all_registers(FILE *f);
 int process_delete(FILE *f);
+int process_update(FILE *f);
 
 typedef struct {
   char name[50];
@@ -35,19 +36,12 @@ int save_product(FILE*f, product p) {
 }
 
 int main() {
-  FILE *f;
   int choose, result;
 
-  f = fopen("products.txt", "a");
-
-  if (f == NULL) {
-    return -1;
-  }
-  
   do {
     greetings();
     choose = read_choose();
-    result = process_choose(f, choose);
+    result = process_choose(choose);
 
     if(result < 0) {
       printf("failed operation");
@@ -55,8 +49,6 @@ int main() {
     }
 
   } while(choose != 4);
-
-  fclose(f);
 
   return 0;
 }
@@ -68,7 +60,8 @@ void greetings() {
   printf("\t1\tCREATE PRODUCT                      \n");
   printf("\t2\tREAD PRODUCT                        \n");
   printf("\t3\tDELETE PRODUCT                      \n");
-  printf("\t4\tEXIT                                \n");
+  printf("\t4\tUPDATE PRODUCT                      \n");
+  printf("\t5\tEXIT                                \n");
   printf("=========================================\n");
 }
 
@@ -78,16 +71,34 @@ int read_choose() {
   return c;
 }
 
-int process_choose(FILE *f, int choose) {
+int process_choose(int choose) {
+  FILE *f;
+
   switch(choose) {
     case 1:
+      f = fopen("products.txt", "a+");
+      if(f == NULL) {
+        return -1;
+      }
       return process_create(f);
     case 2:
+      f = fopen("products.txt", "r");
+      if(f == NULL) {
+        return -1;
+      }
       return process_read_all_registers(f);
     case 3:
+      f = fopen("products.txt", "r");
+      if(f == NULL) {
+        return -1;
+      }
       return process_delete(f);
     case 4:
-      return 4;
+      f = fopen("products.txt", "r");
+      if(f == NULL) {
+        return -1;
+      }
+      return process_update(f);
   }
   return 0;
 }
@@ -148,34 +159,84 @@ int process_read_all_registers(FILE *f) {
   return 0;
 }
 
+int process_delete(FILE *f) {
+  product p;
+  int found = 0;
+  char nameToDelete[50];
+  FILE *temp = fopen("temp.bin", "a");
 
-  int process_delete(FILE *f) {
-    product p;
-    int found = 0;
-    char nameToDelete[50];
-    FILE *temp = fopen("temp.bin", "a");
+  if (temp == NULL) {
+    return -1;
+  }
 
-    if (temp == NULL) {
-      return -1;
-    }
+  printf("give the name of the product to delete > ");
+  scanf("%s", nameToDelete);
 
-    printf("give the name of the product to delete > ");
-    scanf("%s", nameToDelete);
 
-    while (fscanf(f, "%s %s %f %d", p.name, p.description, &p.price, &p.quantity) == 4) {
-      if (strcmp(nameToDelete, p.name) == 0) {
-          found = 1;
-          continue;
-      }
+  while (fscanf(f, "%s %s %f %d\n", p.name, p.description, &p.price, &p.quantity) == 4) {
+    if (strcmp(nameToDelete, p.name) == 0) {
+      found = 1;
+    } else {
       fprintf(temp, "%s %s %f %d\n", p.name, p.description, p.price, p.quantity);
     }
-    
-    fflush(temp);
-
-    fclose(f);
-    fclose(temp);
-    remove("products.txt");
-    rename("temp.bin", "products.txt");
-    
-    return found;
   }
+  
+  fflush(temp);
+
+  fclose(f);
+  fclose(temp);
+  remove("products.txt");
+  rename("temp.bin", "products.txt");
+  
+  return found;
+}
+
+int process_update(FILE *f) {
+  product p;
+  int found = 0;
+  char nameToUpdate[50];
+  char name[50], description[150];
+  float price;
+  int quantity;
+
+  FILE *temp = fopen("temp.bin", "a");
+
+  if (temp == NULL) {
+    return -1;
+  }
+
+  printf("give the name of the product to update > ");
+  scanf("%s", nameToUpdate);
+
+  printf("insert the product's name > ");
+  scanf("%s", name);
+
+  printf("insert the product's description > ");
+  scanf("%s", description);
+
+  printf("insert the product's price > ");
+  scanf("%f", &price);
+
+  printf("insert the product's quantity > ");
+  scanf("%d", &quantity);
+
+  while (fscanf(f, "%s %s %f %d\n", p.name, p.description, &p.price, &p.quantity) == 4) {
+    if (strcmp(nameToUpdate, p.name) == 0) {
+      found = 1;
+      fprintf(temp, "%s %s %f %d\n", name, description, price, quantity);
+    } else {
+      fprintf(temp, "%s %s %f %d\n", p.name, p.description, p.price, p.quantity);
+    }
+  }
+
+  fflush(temp);
+
+  fclose(f);
+  fclose(temp);
+  remove("products.txt");
+  rename("temp.bin", "products.txt");
+
+  printf("%d", found);
+
+  return found;
+}
